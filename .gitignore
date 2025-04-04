@@ -1,3 +1,9 @@
 # Settings and system files
 .vscode
 .DS_Store
+
+# Python
+.venv
+
+# Models
+*.pt

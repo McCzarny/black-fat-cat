@@ -1,0 +1,16 @@
+model:
+  name: "yolov8n.pt"
+  confidence_threshold: 0.25
+  iou_threshold: 0.45
+  path: "models/yolov8n.pt"
+
+camera:
+  width: 640
+  height: 480
+  fps: 15
+  index: 0
+
+resources:
+  max_memory_usage: 512MB
+  use_gpu: false
+  optimize_for_low_spec: true
