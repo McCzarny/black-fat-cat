@@ -75,4 +75,26 @@ Everything works as expected. I can control the witch using the GPIO pin from th
 
 ## Phase 2 - detect a cat (any)
 
-TODO
+Planned YOLO v8 based project to detect a cat using the camera.
+Implementation is in tools/cat-detector
+
+### Problem #1 - development on an old hardware with an old OS
+
+Developing things on old stuff is not easy. Up-to-date libs are not necessarily tested with such a setup or explicitly not supported. After created a basic project on my laptop, I tried to run it on the Odroid C2 and it failed ON THE FIRST line of the python script:
+```python
+import cv2
+```
+The error was:
+```
+Illegal instruction (core dumped)
+```
+After running it under gdb, I found out that the problem is with the `numpy` library:
+
+```
+Thread 2 "python3" received signal SIGILL, Illegal instruction.
+[Switching to Thread 0x7fb5dbc1e0 (LWP 10940)]
+0x0000007fb61c1564 in blas_thread_server ()
+   from .../.venv/lib/python3.8/site-packages/numpy/core/../../numpy.libs/libopenblas64_p-r0-cecebdce.3.21.so
+```
+
+ Time to start debugging.
