@@ -98,3 +98,21 @@ Thread 2 "python3" received signal SIGILL, Illegal instruction.
 ```
 
  Time to start debugging.
+
+ Update 2025-04-08:
+ It turned out that Odroid C2 kernel does not initialize CNTKCTL_EL1. After asking for a help I got a response from the maintainer of the OpenBLAS:
+https://github.com/OpenMathLib/OpenBLAS/issues/5209#issuecomment-2786394552
+
+I downloaded sources with version used by numPy, built the OpenBLAS with the following command:
+```bash
+cd OpenBLAS
+make -j4 TARGET=CORTEXA53 DEBUG=1
+```
+Next I cloned the numPy repo and built it with the following command:
+```bash
+cd numpy
+pip install .
+```
+
+when I run it under gdb, I got the path of OpenBLAS used by numPy which I replaced with the one I built.
+After applying the fix, the numPy works and the script at least does not crash...
