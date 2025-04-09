@@ -116,3 +116,11 @@ pip install .
 
 when I run it under gdb, I got the path of OpenBLAS used by numPy which I replaced with the one I built.
 After applying the fix, the numPy works and the script at least does not crash...
+
+### Gather data
+
+Created a script to monitor the dog door and save the images if a cat is detected (50% confidence). With the stored images I will be able to train the model to detect the black fat cat only.
+
+This step will allow me to check if the setup works correctly and gather data for the next step.
+
+The script is in `tools/cat-detector/src/gathercats.py`.

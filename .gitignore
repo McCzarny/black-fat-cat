@@ -7,3 +7,6 @@
 
 # Models
 *.pt
+
+# Stats
+*.stat.txt
