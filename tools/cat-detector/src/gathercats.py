@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
+
 import cv2
 import torch
 import yaml
 import os
 import time
 import datetime
+import fcntl
 from ultralytics import YOLO
 
 
@@ -24,21 +27,23 @@ def save_frame(frame, frames_dir, confidence_percentage):
     frame_path = os.path.join(frames_dir, f"cat-{confidence_percentage:.0f}-{timestamp}.jpeg")
     cv2.imwrite(frame_path, frame)
 
-def save_frame_if_cat_detected(frame, results, frames_dir):
+def save_frame_if_cat_detected(frame, results, frames_dir, stats_file):
     for result in results:
         summary = result.summary()
         for detection in summary:
             if detection['name'] == 'cat':
-                print("Cat detected!")
+                print(f"Cat detected with confidence {detection['confidence']:.2f}!")
+                log_statistics(stats_file, f"Cat detected with confidence {detection['confidence']:.2f}!")
                 if detection['confidence'] > 0.5:
                     save_frame(frame, frames_dir, detection['confidence'] * 100)
+                    if check_directory_size(frames_dir):
+                        print("Frames directory exceeded 1 GB. Stopping script.")
+                        log_statistics(stats_file, "Frames directory exceeded 1 GB. Stopping script.")
+                        exit(0)
+                    return True
                 else:
                     print(f"Cat detected but confidence is low: {detection['confidence']}")
-
-                if check_directory_size(frames_dir):
-                    print("Frames directory exceeded 1 GB. Stopping script.")
-                    exit(0)
-                return True
+                break
     return False
 
 def log_statistics(stats_file, stats):
@@ -46,13 +51,23 @@ def log_statistics(stats_file, stats):
     with open(stats_file, 'a') as file:
         file.write(f"{timestamp} - {stats}\n")
 
+def prevent_multiple_instances():
+    lock_file = '/tmp/gathercats.lock'
+    lock_fd = open(lock_file, 'w')
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("Another instance of the script is already running. Exiting.")
+        exit(1)
+    return lock_fd
+
 def main():
     settings_path = os.path.join(os.path.dirname(__file__), './config/settings.yaml')
     with open(settings_path) as file:
         config = yaml.safe_load(file)
 
     camera_index = config['camera']['index']
-    model_path = config['model']['path']
+    model_path = os.path.join(os.path.dirname(__file__), "..", config['model']['path'])
 
     frames_dir = os.path.join(os.path.dirname(__file__), '../frames')
     os.makedirs(frames_dir, exist_ok=True)
@@ -82,7 +97,7 @@ def main():
 
         frame_count += 1
         results = process_frame(frame, model)
-        if save_frame_if_cat_detected(frame, results, frames_dir):
+        if save_frame_if_cat_detected(frame, results, frames_dir, stats_file):
             cat_detections += 1
 
         elapsed_time = time.time() - start_time
@@ -98,4 +113,9 @@ def main():
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    main()
+    lock_fd = prevent_multiple_instances()
+    try:
+        main()
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        lock_fd.close()

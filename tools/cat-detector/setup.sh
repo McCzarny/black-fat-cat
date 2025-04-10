@@ -21,3 +21,5 @@ curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Mi
 chmod +x Miniforge3-$(uname)-$(uname -m).sh
 bash Miniforge3-$(uname)-$(uname -m).sh -b -p ~/miniforge3
 micromamba activate ~/miniforge3
+
+cd ~/repositories/black-fat-cat; python3 ./tools/cat-detector/src/gathercats.py
