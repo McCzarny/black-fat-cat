@@ -63,7 +63,7 @@ def prevent_multiple_instances():
 
 def get_first_camera_index():
     devs = os.listdir('/dev')
-    vid_indices = [int(dev[-1]) for dev in devs 
+    vid_indices = [int(dev[len('video'):]) for dev in devs 
                if dev.startswith('video')]
     vid_indices = sorted(vid_indices)
     print(f"Available camera indices: {vid_indices}")
@@ -72,12 +72,38 @@ def get_first_camera_index():
     else:
         print("No cameras found.")
         exit(1)
+
+def get_camera():
+
+    devs = os.listdir('/dev')
+    vid_indices = [int(dev[len('video'):]) for dev in devs 
+               if dev.startswith('video')]
+    vid_indices = sorted(vid_indices)
+
+    # For testing, if MacOS, use the first camera index
+    if os.uname().sysname == 'Darwin':
+        vid_indices = [0]
+
+    print(f"Available camera indices: {vid_indices}")
+    if not vid_indices:
+        print("No cameras found.")
+        return None
+    
+    for index in vid_indices:
+        try:
+            cap = cv2.VideoCapture(index)
+            return cap
+        except:
+            print(f"Error accessing camera {index}. Trying next one...")
+            continue
+    
+    return None
+
 def main():
     settings_path = os.path.join(os.path.dirname(__file__), './config/settings.yaml')
     with open(settings_path) as file:
         config = yaml.safe_load(file)
 
-    camera_index = get_first_camera_index()
     model_path = os.path.join(os.path.dirname(__file__), "..", config['model']['path'])
 
     frames_dir = os.path.join(os.path.dirname(__file__), '../frames')
@@ -95,7 +121,10 @@ def main():
     model = load_model(model_path)
     model.eval()
 
-    cap = cv2.VideoCapture(camera_index)
+    cap = get_camera()
+    if cap is None:
+        print("No camera found. Exiting.")
+        exit(1)
 
     start_time = time.time()
     frame_count = 0
@@ -105,13 +134,14 @@ def main():
         try:
             ret, frame = cap.read()
         except:
-            log_statistics(stats_file, f"Error reading frame from camera {camera_index}. Trying again...")
+            log_statistics(stats_file, f"Error reading frame from camera. Trying again...")
             print("Error reading frame from camera. Trying again...")
             time.sleep(1)
             cap.release()
-            camera_index = get_first_camera_index()
-            cap = cv2.VideoCapture(camera_index)
-            log_statistics(stats_file, f"Reinitialized camera with ID {camera_index}")
+            cap = get_camera()
+            if cap is None:
+                print("No camera found. Exiting.")
+                exit(1)
             continue
 
         if not ret:
