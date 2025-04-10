@@ -61,18 +61,6 @@ def prevent_multiple_instances():
         exit(1)
     return lock_fd
 
-def get_first_camera_index():
-    devs = os.listdir('/dev')
-    vid_indices = [int(dev[len('video'):]) for dev in devs 
-               if dev.startswith('video')]
-    vid_indices = sorted(vid_indices)
-    print(f"Available camera indices: {vid_indices}")
-    if vid_indices:
-        return vid_indices[0]
-    else:
-        print("No cameras found.")
-        exit(1)
-
 def get_camera():
 
     devs = os.listdir('/dev')
@@ -131,9 +119,9 @@ def main():
     cat_detections = 0
 
     while True:
-        try:
-            ret, frame = cap.read()
-        except:
+        ret, frame = cap.read()
+        
+        if not ret:
             log_statistics(stats_file, f"Error reading frame from camera. Trying again...")
             print("Error reading frame from camera. Trying again...")
             time.sleep(1)
@@ -143,9 +131,6 @@ def main():
                 print("No camera found. Exiting.")
                 exit(1)
             continue
-
-        if not ret:
-            break
 
         frame_count += 1
         results = process_frame(frame, model)
