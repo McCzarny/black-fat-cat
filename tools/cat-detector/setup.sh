@@ -23,3 +23,5 @@ bash Miniforge3-$(uname)-$(uname -m).sh -b -p ~/miniforge3
 micromamba activate ~/miniforge3
 
 cd ~/repositories/black-fat-cat; python3 ./tools/cat-detector/src/gathercats.py
+
+conda activate numpy-dev; cd ~/repositories/black-fat-cat; python3 ./tools/cat-detector/src/gathercats.py

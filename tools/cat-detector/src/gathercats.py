@@ -61,12 +61,23 @@ def prevent_multiple_instances():
         exit(1)
     return lock_fd
 
+def get_first_camera_index():
+    devs = os.listdir('/dev')
+    vid_indices = [int(dev[-1]) for dev in devs 
+               if dev.startswith('video')]
+    vid_indices = sorted(vid_indices)
+    print(f"Available camera indices: {vid_indices}")
+    if vid_indices:
+        return vid_indices[0]
+    else:
+        print("No cameras found.")
+        exit(1)
 def main():
     settings_path = os.path.join(os.path.dirname(__file__), './config/settings.yaml')
     with open(settings_path) as file:
         config = yaml.safe_load(file)
 
-    camera_index = config['camera']['index']
+    camera_index = get_first_camera_index()
     model_path = os.path.join(os.path.dirname(__file__), "..", config['model']['path'])
 
     frames_dir = os.path.join(os.path.dirname(__file__), '../frames')
@@ -91,7 +102,18 @@ def main():
     cat_detections = 0
 
     while True:
-        ret, frame = cap.read()
+        try:
+            ret, frame = cap.read()
+        except:
+            log_statistics(stats_file, f"Error reading frame from camera {camera_index}. Trying again...")
+            print("Error reading frame from camera. Trying again...")
+            time.sleep(1)
+            cap.release()
+            camera_index = get_first_camera_index()
+            cap = cv2.VideoCapture(camera_index)
+            log_statistics(stats_file, f"Reinitialized camera with ID {camera_index}")
+            continue
+
         if not ret:
             break
 
