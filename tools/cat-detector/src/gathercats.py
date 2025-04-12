@@ -22,20 +22,20 @@ def check_directory_size(frames_dir):
     total_size = sum(os.path.getsize(os.path.join(frames_dir, f)) for f in os.listdir(frames_dir) if os.path.isfile(os.path.join(frames_dir, f)))
     return total_size > 1 * 1024 * 1024 * 1024  # 1 GB
 
-def save_frame(frame, frames_dir, confidence_percentage):
+def save_frame(frame, frames_dir, name, confidence_percentage):
     timestamp = int(time.time())
-    frame_path = os.path.join(frames_dir, f"cat-{confidence_percentage:.0f}-{timestamp}.jpeg")
+    frame_path = os.path.join(frames_dir, f"{timestamp}-{name}-{confidence_percentage:.0f}.jpeg")
     cv2.imwrite(frame_path, frame)
 
-def save_frame_if_cat_detected(frame, results, frames_dir, stats_file):
+def save_frame_if_cat_detected(frame, results, frames_dir, stats_file, confidence_threshold):
     for result in results:
         summary = result.summary()
         for detection in summary:
             if detection['name'] == 'cat':
                 print(f"Cat detected with confidence {detection['confidence']:.2f}!")
                 log_statistics(stats_file, f"Cat detected with confidence {detection['confidence']:.2f}!")
-                if detection['confidence'] > 0.5:
-                    save_frame(frame, frames_dir, detection['confidence'] * 100)
+                if detection['confidence'] >= confidence_threshold:
+                    save_frame(frame, frames_dir, detection['name'], detection['confidence'] * 100)
                     if check_directory_size(frames_dir):
                         print("Frames directory exceeded 1 GB. Stopping script.")
                         log_statistics(stats_file, "Frames directory exceeded 1 GB. Stopping script.")
@@ -134,7 +134,7 @@ def main():
 
         frame_count += 1
         results = process_frame(frame, model)
-        if save_frame_if_cat_detected(frame, results, frames_dir, stats_file):
+        if save_frame_if_cat_detected(frame, results, frames_dir, stats_file, config['detection']['confidence_threshold']):
             cat_detections += 1
 
         elapsed_time = time.time() - start_time

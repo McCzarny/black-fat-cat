@@ -14,3 +14,6 @@ resources:
   max_memory_usage: 512MB
   use_gpu: false
   optimize_for_low_spec: true
+
+detection:
+  confidence_threshold: 0.25
