@@ -9,7 +9,6 @@ import datetime
 import fcntl
 from ultralytics import YOLO
 
-
 def load_model(model_path):
     model = YOLO(model_path)
     return model
@@ -18,13 +17,18 @@ def process_frame(frame, model):
     results = model(frame)
     return results
 
+def process_stream(model):
+    camera_indices = get_camera_indices()
+    results = model(stream=True, source=camera_indices[0])
+    return results
+
 def check_directory_size(frames_dir):
     total_size = sum(os.path.getsize(os.path.join(frames_dir, f)) for f in os.listdir(frames_dir) if os.path.isfile(os.path.join(frames_dir, f)))
     return total_size > 1 * 1024 * 1024 * 1024  # 1 GB
 
 def save_frame(frame, frames_dir, name, confidence_percentage):
-    timestamp = int(time.time())
-    frame_path = os.path.join(frames_dir, f"{timestamp}-{name}-{confidence_percentage:.0f}.jpeg")
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    frame_path = os.path.join(frames_dir, f"{timestamp}_{name}_{confidence_percentage:.0f}.jpeg")
     cv2.imwrite(frame_path, frame)
 
 def save_frame_if_cat_detected(frame, results, frames_dir, stats_file, confidence_threshold):
@@ -61,16 +65,20 @@ def prevent_multiple_instances():
         exit(1)
     return lock_fd
 
-def get_camera():
+def get_camera_indices():
+    # For testing, if MacOS, use the first camera index
+    if os.uname().sysname == 'Darwin':
+        vid_indices = [0]
+        return vid_indices
 
     devs = os.listdir('/dev')
     vid_indices = [int(dev[len('video'):]) for dev in devs 
                if dev.startswith('video')]
     vid_indices = sorted(vid_indices)
+    return vid_indices
 
-    # For testing, if MacOS, use the first camera index
-    if os.uname().sysname == 'Darwin':
-        vid_indices = [0]
+def get_camera():
+    vid_indices = get_camera_indices()
 
     print(f"Available camera indices: {vid_indices}")
     if not vid_indices:
@@ -100,6 +108,9 @@ def main():
     stats_file = os.path.join(os.path.dirname(__file__), '../stats/gathercats.stat.txt')
     os.makedirs(os.path.dirname(stats_file), exist_ok=True)
 
+    # In case of camera error, the code is not able to recover and getting seg fault
+    stream_mode = False
+
     if not os.path.exists(model_path):
         print(f"Model not found at {model_path}. Downloading...")
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
@@ -109,45 +120,75 @@ def main():
     model = load_model(model_path)
     model.eval()
 
-    cap = get_camera()
-    if cap is None:
-        print("No camera found. Exiting.")
-        exit(1)
+    if not stream_mode:
+        cap = get_camera()
+        if cap is None:
+            print("No camera found. Exiting.")
+            exit(1)
+        ret, frame = cap.read()
+        if ret:
+            frame_path = os.path.join(frames_dir, f"preview.jpeg")
+            cv2.imwrite(frame_path, frame)
+    else:
+        print("Stream mode is enabled.")
 
     start_time = time.time()
     frame_count = 0
     cat_detections = 0
 
     while True:
-        ret, frame = cap.read()
+        frame = None
+        if not stream_mode:
+            ret, frame = cap.read()
         
-        if not ret:
-            log_statistics(stats_file, f"Error reading frame from camera. Trying again...")
-            print("Error reading frame from camera. Trying again...")
-            time.sleep(1)
-            cap.release()
-            cap = get_camera()
-            if cap is None:
-                print("No camera found. Exiting.")
-                exit(1)
-            continue
+            if not ret:
+                log_statistics(stats_file, f"Error reading frame from camera. Trying again...")
+                print("Error reading frame from camera. Trying again...")
+                time.sleep(1)
+                cap.release()
+                cap = get_camera()
+                if cap is None:
+                    print("No camera found. Exiting.")
+                    exit(1)
+                continue
 
-        frame_count += 1
-        results = process_frame(frame, model)
-        if save_frame_if_cat_detected(frame, results, frames_dir, stats_file, config['detection']['confidence_threshold']):
-            cat_detections += 1
+            frame_count += 1
+            results = process_frame(frame, model)
+            if save_frame_if_cat_detected(frame, results, frames_dir, stats_file, config['detection']['confidence_threshold']):
+                cat_detections += 1
+        else:
+            results = process_stream(model)
+            for result in results:
+                frame = result.orig_img
+                frame_count += 1
+                if save_frame_if_cat_detected(frame, result, frames_dir, stats_file, config['detection']['confidence_threshold']):
+                    cat_detections += 1
+                elapsed_time = time.time() - start_time
+                if elapsed_time >= 600:  # 10 minutes
+                    fps = frame_count / elapsed_time
+                    stats = f"FPS: {fps:.2f}, Cat Detections: {cat_detections}"
+                    log_statistics(stats_file, stats)
+                    # Save a preview frame to know how the camera is positioned
+                    frame_path = os.path.join(frames_dir, f"preview.jpeg")
+                    cv2.imwrite(frame_path, frame)
+
+                    start_time = time.time()
+                    frame_count = 0
+                    cat_detections = 0
 
         elapsed_time = time.time() - start_time
         if elapsed_time >= 600:  # 10 minutes
             fps = frame_count / elapsed_time
             stats = f"FPS: {fps:.2f}, Cat Detections: {cat_detections}"
             log_statistics(stats_file, stats)
+            # Save a preview frame to know how the camera is positioned
+            frame_path = os.path.join(frames_dir, f"preview.jpeg")
+            cv2.imwrite(frame_path, frame)
+
             start_time = time.time()
             frame_count = 0
             cat_detections = 0
 
-    cap.release()
-    cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     lock_fd = prevent_multiple_instances()
@@ -156,3 +197,4 @@ if __name__ == "__main__":
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
         lock_fd.close()
+        cv2.destroyAllWindows()
