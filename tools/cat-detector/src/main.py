@@ -45,7 +45,7 @@ def save_frame_if_cat_detected(frame, results, frames_dir, stats_file, confidenc
                 break
     return False
 
-def trigger_witch():
+def trigger_witch(pause_time):
     GPIO = 247
     gpio_path = f"/sys/class/gpio/gpio{GPIO}"
 
@@ -64,7 +64,7 @@ def trigger_witch():
             f.write("1")  # Turn ON
 
         # Sleep for 30 seconds
-        time.sleep(30)
+        time.sleep(pause_time)
 
         # Turn off the witch
         print("Make witch sleep")
@@ -105,7 +105,7 @@ def trigger_witch_if_cat_detected(
                     log_statistics(stats_file, "Witch trigger interval not met.")
                     return False
                 log_statistics(stats_file, "Witch triggered due to cat detection!")
-                trigger_witch()
+                trigger_witch(30)
                 save_frame(frame, frames_dir, f"witch-triggered-for-{detection['name']}", detection['confidence'] * 100)
                 last_witch_trigger_time = current_time
                 return True
@@ -191,6 +191,12 @@ def main():
     frame_count = 0
     cat_detections = 0
 
+    # Do a test witch trigger
+    print("Testing witch trigger...")
+    trigger_witch(5)
+    print("Witch trigger test completed.")
+
+    # Main loop
     while True:
         frame = None
         ret, frame = cap.read()
