@@ -124,3 +124,7 @@ Created a script to monitor the dog door and save the images if a cat is detecte
 This step will allow me to check if the setup works correctly and gather data for the next step.
 
 The script is in `tools/cat-detector/src/gathercats.py`.
+
+## Phase 3 - small change in plan
+
+The setup works, but generates moderate quality of results. Sometimes captures a cat, dog or even a human. Except of the look of the cat, there is one more thing that distinguishes the black fat cat from my pets - it comes in the middle of the night. I've decided to add a rule that will only trigger the witch if the cat is detected and the time is between 00:00 and 05:00. The witch is already connected to the board and tested to work correctly. Now it's time to wait for the cat to come. There is a chance that the problem will be solved by itself, because it's already warming up and the cat may not come anymore. I will keep the setup running and check the logs and captured images from time to time.

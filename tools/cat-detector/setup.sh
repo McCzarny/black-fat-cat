@@ -25,5 +25,7 @@ micromamba activate ~/miniforge3
 cd ~/repositories/black-fat-cat; python3 ./tools/cat-detector/src/gathercats.py
 
 conda activate numpy-dev; cd ~/repositories/black-fat-cat; python3 ./tools/cat-detector/src/gathercats.py
+conda activate numpy-dev; cd ~/repositories/black-fat-cat; python3 ./tools/cat-detector/src/main.py
+conda activate numpy-dev; cd /home/odroid/repositories/black-fat-cat; python3 ./tools/cat-detector/src/main.py
 
 fswebcam -r 640x480 --jpeg 85 -D 1 web-cam-shot.jpg
