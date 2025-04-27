@@ -16,7 +16,7 @@ resources:
   optimize_for_low_spec: true
 
 detection:
-  confidence_threshold: 0.25
+  confidence_threshold: 0.45
 
 witch_trigger:
   confidence_threshold: 0.5

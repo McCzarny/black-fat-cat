@@ -234,7 +234,7 @@ def main():
             trigger_witch_if_cat_detected(frame, results, frames_dir, stats_file, config)
 
         elapsed_time = time.time() - start_time
-        if elapsed_time >= 600:  # 10 minutes
+        if elapsed_time >= 60 * 60 * 24:  # 24 hours
             fps = frame_count / elapsed_time
             stats = f"FPS: {fps:.2f}, Cat Detections: {cat_detections}"
             log_statistics(stats_file, stats)
